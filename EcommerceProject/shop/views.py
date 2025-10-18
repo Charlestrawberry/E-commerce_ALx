@@ -5,11 +5,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 
 from .models import Product, Category, Order, OrderItem, Review, Payment
-from .Serializers import (
+from .serializers import (
     CategorySerializer,
     ProductSerializer,
     OrderSerializer,
-    OrderItemSerializer,
     ReviewSerializer,
     PaymentSerializer,
 )
@@ -32,6 +31,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsStaffOrReadOnly]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ["name", "description"]
+    ordering_fields = ["price", "stock"]
     filterset_fields = {
         "category": ["exact"],
         "price": ["gte", "lte"],
