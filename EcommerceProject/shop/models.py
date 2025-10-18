@@ -15,6 +15,10 @@ class Product(models.Model):
     stock = models.IntegerField(default=0)
     image = models.ImageField(upload_to="products/", null=True, blank=True)
     category = models.ForeignKey(Category, related_name="products", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
 
 class Order(models.Model):
     STATUS_CHOICES = [("pending","Pending"),("paid","Paid"),("shipped","Shipped"),("cancelled","Cancelled")]
@@ -24,12 +28,17 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"Order #{self.pk} by {self.user}"
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     price_at_order = models.DecimalField(max_digits=10, decimal_places=2)
 
+    def __str__(self):
+        return f"{self.product.name} x{self.quantity}"
 
 class Review(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -37,6 +46,9 @@ class Review(models.Model):
     rating = models.PositiveSmallIntegerField()
     comment = models.TextField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review {self.rating} for {self.product.name}"
 
 class Payment(models.Model):
     METHOD_CHOICES = [("stripe","stripe"),("flutterwave","flutterwave"),("Bank Transfer","Bank Transfer")]
@@ -52,13 +64,22 @@ class Payment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"Payment {self.amount} ({self.status}) for order {self.order_id}"
+
 
 
 class Cart(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     products = models.ManyToManyField(Product, through="CartItem")
 
+    def __str__(self):
+        return f"Cart({self.user})"
+
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"{self.product.name} x{self.quantity}"
