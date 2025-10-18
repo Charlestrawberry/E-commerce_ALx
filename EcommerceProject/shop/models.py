@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.conf import settings
 
 # Create your models here.
@@ -15,7 +16,7 @@ class Product(models.Model):
     stock = models.IntegerField(default=0)
     image = models.ImageField(upload_to="products/", null=True, blank=True)
     category = models.ForeignKey(Category, related_name="products", on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return self.name
@@ -30,15 +31,24 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order #{self.pk} by {self.user}"
+    
+    def save(self, *args, **kwargs):
+        self.total_amount = sum(item.quantity * item.price_at_order for item in self.items.all())
+        super().save(*args, **kwargs)
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
-    price_at_order = models.DecimalField(max_digits=10, decimal_places=2)
+    price_at_order = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.product.name} x{self.quantity}"
+
+    def save(self, *args, **kwargs):
+        if not self.price_at_order:
+            self.price_at_order = self.product.price
+            super().save(*args, **kwargs)
 
 class Review(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -60,7 +70,7 @@ class Payment(models.Model):
     ]
     order = models.ForeignKey(Order, related_name="payments", on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    method = models.CharField(max_length=20, choices=METHOD_CHOICES, default = "Stripe")
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES, default = "stripe")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -77,8 +87,8 @@ class Cart(models.Model):
         return f"Cart({self.user})"
 
 class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    cart = models.ForeignKey(Cart,  on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, related_name="cart_items", on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
 
     def __str__(self):
